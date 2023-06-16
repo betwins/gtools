@@ -38,9 +38,9 @@ var unitConversionMap = map[string]func(before float64) float64{
 	"K2M": divid1024,
 	"K2G": divid1024twice,
 	"M2K": multi1024,
-	"M2G": multi1024twice,
-	"G2K": divid1024twice,
-	"G2M": divid1024,
+	"M2G": divid1024,
+	"G2K": multi1024twice,
+	"G2M": multi1024,
 }
 
 func ConvertDigitMeasure(before float64, beforeUnit, afterUnit string) (float64, error) {
