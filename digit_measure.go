@@ -2,6 +2,7 @@ package gtools
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 )
@@ -15,4 +16,39 @@ func SplitDigitMeasure(measure string) (int, string, error) {
 		return num, unit, nil
 	}
 	return 0, "", errors.New("invalid digit measure")
+}
+
+func multi1024(before float64) float64 {
+	return before * 1024
+}
+
+func multi1024twice(before float64) float64 {
+	return before * 1024 * 1024
+}
+
+func divid1024(before float64) float64 {
+	return before / 1024
+}
+
+func divid1024twice(before float64) float64 {
+	return before / 1024 / 1024
+}
+
+var unitConversionMap = map[string]func(before float64) float64{
+	"K2M": divid1024,
+	"K2G": divid1024twice,
+	"M2K": multi1024,
+	"M2G": multi1024twice,
+	"G2K": divid1024twice,
+	"G2M": divid1024,
+}
+
+func ConvertDigitMeasure(before float64, beforeUnit, afterUnit string) (float64, error) {
+
+	convertFuncKey := fmt.Sprintf("%s2%s", beforeUnit, afterUnit)
+	if convertFunc, exist := unitConversionMap[convertFuncKey]; exist {
+		return convertFunc(before), nil
+	} else {
+		return 0, errors.New("invalid unit(not K、M、G")
+	}
 }
