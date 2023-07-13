@@ -8,7 +8,7 @@ import (
 )
 
 func SplitDigitMeasure(measure string) (int, string, error) {
-	re := regexp.MustCompile(`(\d+)([KMG])`)
+	re := regexp.MustCompile(`^(\d+)([KMG]*)$`)
 	match := re.FindStringSubmatch(measure)
 	if match != nil {
 		num, _ := strconv.Atoi(match[1])
@@ -26,11 +26,19 @@ func multi1024twice(before float64) float64 {
 	return before * 1024 * 1024
 }
 
+func multi1024thrice(before float64) float64 {
+	return before * 1024 * 1024 * 1024
+}
+
 func divid1024(before float64) float64 {
 	return before / 1024
 }
 
 func divid1024twice(before float64) float64 {
+	return before / 1024 / 1024
+}
+
+func divid1024thrice(before float64) float64 {
 	return before / 1024 / 1024
 }
 
@@ -41,6 +49,12 @@ var unitConversionMap = map[string]func(before float64) float64{
 	"M2G": divid1024,
 	"G2K": multi1024twice,
 	"G2M": multi1024,
+	"K2":  multi1024,
+	"M2":  multi1024twice,
+	"G2":  multi1024thrice,
+	"2K":  divid1024,
+	"2M":  divid1024twice,
+	"2G":  divid1024thrice,
 }
 
 func ConvertDigitMeasure(before float64, beforeUnit, afterUnit string) (float64, error) {
