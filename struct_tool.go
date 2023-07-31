@@ -87,16 +87,29 @@ func Struct2MapString(in any, tagName string) map[string]string {
 
 // CopyStruct 结构体复制, 忽略空值，暂不支持结构体内部map复制（有需要可扩展）
 func CopyStruct[DST any](src any) DST {
+
+	if reflect.ValueOf(src).Kind() != reflect.Pointer {
+		panic("src must be pointer to struct object")
+	}
+
 	var dst DST
 	dstValue := reflect.ValueOf(&dst).Elem()
 	srcValue := reflect.ValueOf(src).Elem()
+
+	if srcValue.Kind() != reflect.Struct {
+		panic("src must point to struct object")
+	}
+
+	if dstValue.Kind() != reflect.Struct {
+		panic("DST must be struct type")
+	}
 
 	if src == nil {
 		return dst
 	}
 
 	// Recursively copy the original.
-	copyStructRecursive(srcValue.Addr().Interface(), dstValue.Addr().Interface())
+	copyStructRecursive(srcValue.Addr().Interface(), dstValue.Addr().Interface(), true)
 
 	return dst
 }
@@ -104,27 +117,43 @@ func CopyStruct[DST any](src any) DST {
 // CopyStructTo 复制到目标结构体对象，忽略空值，暂不支持结构体内部map复制（有需要可扩展）
 func CopyStructTo(dst any, src any) {
 
+	if reflect.ValueOf(src).Kind() != reflect.Pointer {
+		panic("src must be pointer to struct object")
+	}
+
+	if reflect.ValueOf(dst).Kind() != reflect.Pointer {
+		panic("dst must be pointer to struct object")
+	}
+
 	// Make the interface a reflect.Value
 	srcValue := reflect.ValueOf(src).Elem()
 	dstValue := reflect.ValueOf(dst).Elem()
+
+	if srcValue.Kind() != reflect.Struct {
+		panic("src must point to struct object")
+	}
+
+	if dstValue.Kind() != reflect.Struct {
+		panic("dst must point to struct object")
+	}
 
 	if src == nil {
 		return
 	}
 
 	// Recursively copy the original.
-	copyStructRecursive(srcValue.Addr().Interface(), dstValue.Addr().Interface())
+	copyStructRecursive(srcValue.Addr().Interface(), dstValue.Addr().Interface(), false)
 
 	return
 }
 
-func copyStructRecursive(src, dst interface{}) {
+func copyStructRecursive(src, dst interface{}, replaceAll bool) {
 	dstValue := reflect.ValueOf(dst).Elem()
 	srcValue := reflect.ValueOf(src).Elem()
-	//if srcValue.Type() == dstValue.Type() && dstValue.CanSet() {
-	//	dstValue.Set(srcValue)
-	//	return
-	//}
+	if (replaceAll || srcValue.Kind() != reflect.Struct) && srcValue.Type() == dstValue.Type() && !isBlank(srcValue) && dstValue.CanSet() {
+		dstValue.Set(srcValue)
+		return
+	}
 
 	for i := 0; i < srcValue.NumField(); i++ {
 		srcField := srcValue.Field(i)
@@ -135,6 +164,8 @@ func copyStructRecursive(src, dst interface{}) {
 		}
 
 		switch srcField.Kind() {
+		case reflect.Map:
+			continue
 		case reflect.Slice:
 			// Make a new slice and copy each element.
 			if srcField.IsNil() {
@@ -145,15 +176,16 @@ func copyStructRecursive(src, dst interface{}) {
 			}
 			dstFieldByName.Set(reflect.MakeSlice(dstFieldByName.Type(), srcField.Len(), srcField.Cap()))
 			for j := 0; j < srcField.Len(); j++ {
+
 				srcInterface := srcField.Index(j).Addr().Interface()
 				dstInterface := dstFieldByName.Index(j).Addr().Interface()
-				copyStructRecursive(srcInterface, dstInterface)
+				copyStructRecursive(srcInterface, dstInterface, replaceAll)
 			}
 		case reflect.Struct:
 			if dstFieldByName.Kind() != reflect.Struct {
 				continue
 			}
-			copyStructRecursive(srcField.Addr().Interface(), dstFieldByName.Addr().Interface())
+			copyStructRecursive(srcField.Addr().Interface(), dstFieldByName.Addr().Interface(), replaceAll)
 
 		default:
 			if dstFieldByName.CanSet() && !isBlank(srcField) && dstFieldByName.Type() == srcField.Type() {
